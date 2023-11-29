@@ -39,7 +39,7 @@ connectDb(process.env.MONGODB_URI);
 
 // route
 const appRouter = require("./routes/index");
-app.use("/", appRouter);
+app.use("/api", appRouter);
 
 const { errorHandler, notFound } = require("./middlewares/errorHandler");
 // Error handling middleware

@@ -1,10 +1,7 @@
 const mongoose = require("mongoose");
 const connectDb = (uri) => {
   try {
-    mongoose.connect(uri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    mongoose.connect(uri, {});
     console.log("Connect database successfully!");
   } catch (error) {
     throw new Error(`Connect database failure!`);

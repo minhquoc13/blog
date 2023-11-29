@@ -1,5 +1,3 @@
-// controllers/userControllers.js
-
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/UserModel");
@@ -37,19 +35,20 @@ const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    // Find the user by email
     const user = await User.findOne({ email });
 
-    // Check if the user exists and the password is correct
+    if (user.isBlocked) {
+      return res.status(401).json({ message: "User has been blocked!" });
+    }
+
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Generate an access token
     const accessToken = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.ACCESS_TOKEN_SECRET,
-      { expiresIn: "15m" }
+      { expiresIn: "7d" }
     );
 
     // Generate a refresh token
@@ -63,11 +62,12 @@ const login = async (req, res, next) => {
     await user.save();
 
     // Set the access token as an HttpOnly cookie
-    res.cookie("access_token", accessToken, { httpOnly: true });
+    res.cookie("token", accessToken, { httpOnly: true });
 
     // Respond with the access and refresh tokens
     res.json({ accessToken, refreshToken });
   } catch (error) {
+    req.clearCookie("token");
     next(error);
   }
 };
@@ -81,7 +81,6 @@ const logout = async (req, res, next) => {
       return;
     }
 
-    // Remove the refresh token from the user
     const user = await User.findById(userId);
 
     if (user) {
@@ -104,36 +103,100 @@ const getAllUsers = async (req, res, next) => {
   }
 };
 
-const blockUser = async (req, res, next) => {
+const getUserById = async (req, res, next) => {
   try {
-    const id = req.params.id;
-    console.log(id);
-    const user = await User.findOneAndUpdate(
-      { _id: id, role: "user" },
-      {
-        isBlocked: true,
-      },
-      { new: true }
-    );
-    res.json(user);
-  } catch (error) {
-    next(error);
-  }
-};
-const unBlockUser = async (req, res, next) => {
-  try {
-    const id = req.params.id;
-    const user = await User.findOneAndUpdate(
-      { _id: id, role: "user" },
-      {
-        isBlocked: false,
-      },
-      { new: true }
-    );
+    const userId = req.params.id;
+    const user = await User.findById(userId);
     res.json(user);
   } catch (error) {
     next(error);
   }
 };
 
-module.exports = { registerUser, login, logout, blockUser, unBlockUser };
+const blockUser = async (req, res, next) => {
+  try {
+    const userId = req.params.id;
+    const blockUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        isBlocked: true,
+      },
+      { new: true }
+    );
+    res.json(blockUser);
+  } catch (error) {
+    next(error);
+  }
+};
+const unBlockUser = async (req, res, next) => {
+  try {
+    const userId = req.params.id;
+    const unBlockeUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        isBlocked: false,
+      },
+      { new: true }
+    );
+    res.json(unBlockeUser);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateUser = async (req, res, next) => {
+  try {
+    const { firstName, lastName, mobile } = req.body;
+    const id = req.params.id;
+    const userId = req.user.userId;
+    let updateUser = await User.findById(id);
+
+    if (updateUser.id.toString() !== userId) {
+      res.json("Not authorized!");
+    }
+
+    updateUser = await User.findByIdAndUpdate(
+      id,
+      {
+        firstName,
+        lastName,
+        mobile,
+      },
+      { new: true }
+    );
+    res.json(updateUser);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteUser = async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    const userId = req.user.userId;
+    let deleteUser = await User.findById(id);
+    if (deleteUser.id.toString() !== userId) {
+      res.json("Not authorized!");
+    }
+
+    deleteUser = await User.findByIdAndDelete(id);
+
+    res.json(
+      `User ${deleteUser.firstName} with id: ${deleteUser._id} has been deleted!`
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  registerUser,
+  login,
+  logout,
+  getAllUsers,
+  getUserById,
+  updateUser,
+  deleteUser,
+  blockUser,
+  unBlockUser,
+};

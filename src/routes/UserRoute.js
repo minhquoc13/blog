@@ -1,22 +1,19 @@
 const express = require("express");
 const router = express.Router();
 const UserController = require("../controllers/UserController");
-const verifyLogin = require("../middlewares/verifyLogin");
+const { verifyLogin, isAdmin } = require("../middlewares/authMiddleware");
 
-// Route for user registration
+router.get("/", UserController.getAllUsers);
+router.get("/:id", UserController.getUserById);
+router.delete("/:id", verifyLogin, UserController.deleteUser);
+router.patch("/unblock/:id", verifyLogin, isAdmin, UserController.unBlockUser);
+router.patch("/block/:id", verifyLogin, isAdmin, UserController.blockUser);
+router.patch("/:id", verifyLogin, UserController.updateUser);
 router.post("/register", UserController.registerUser);
-
-// Route for user login
 router.post("/login", UserController.login);
-
-// Route for user logout
 router.post("/logout", UserController.logout);
 
-router.post("/block/:id", UserController.blockUser);
-router.post("/un-block/:id", UserController.unBlockUser);
-
-// test verifyLogin success
-router.get("/test", verifyLogin, (req, res) => {
+router.get("/test", verifyLogin, isAdmin, (req, res) => {
   res.json("test");
 });
 
