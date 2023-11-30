@@ -8,9 +8,9 @@ const commentSchema = new Schema(
     postId: {
       type: Schema.Types.ObjectId,
       ref: "Post",
-      required: true
+      required: true,
     },
-    parent: { type: Schema.Types.ObjectId },
+    parent: { type: Schema.Types.ObjectId, ref: "Comment" },
     likes: [{ type: Schema.Types.ObjectId, ref: "User" }],
     isUpdatedAt: { type: Date, default: null },
   },

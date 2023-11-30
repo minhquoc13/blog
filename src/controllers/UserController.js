@@ -4,20 +4,24 @@ const User = require("../models/UserModel");
 
 const registerUser = async (req, res, next) => {
   try {
-    const { firstName, lastName, role, email, mobile, password } = req.body;
+    const { userName, firstName, lastName, email, mobile, password } = req.body;
+
+    const checkUserNameExist = await User.findOne({ userName });
+    if (checkUserNameExist) {
+      res.status(404).json({ message: "Your username already exists" });
+    }
 
     const checkEmailExist = await User.findOne({ email });
     if (checkEmailExist) {
-      // Hash the password before saving it
       res.status(404).json({ message: "Your email already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = new User({
+      userName,
       firstName,
       lastName,
-      role,
       email,
       mobile,
       password: hashedPassword,
@@ -33,16 +37,16 @@ const registerUser = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { userName, password } = req.body;
 
-    const user = await User.findOne({ email });
-
-    if (user.isBlocked) {
-      return res.status(401).json({ message: "User has been blocked!" });
-    }
+    const user = await User.findOne({ userName });
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    if (user.isBlocked) {
+      return res.status(401).json({ message: "User has been blocked!" });
     }
 
     const accessToken = jwt.sign(
@@ -67,7 +71,7 @@ const login = async (req, res, next) => {
     // Respond with the access and refresh tokens
     res.json({ accessToken, refreshToken });
   } catch (error) {
-    req.clearCookie("token");
+    // req.clearCookie("token");
     next(error);
   }
 };

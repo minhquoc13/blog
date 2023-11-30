@@ -6,12 +6,8 @@ const postSchema = new Schema(
     desc: { type: String },
     content: { type: String, required: true },
     author: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    isArchived: {
-      type: Boolean,
-      default: false,
-      required: true,
-    },
     isUpdatedAt: { type: Date, default: null },
+    views: { type: Number, default: 0 },
     likes: [{ type: Schema.Types.ObjectId, ref: "User" }],
     comments: [
       {
@@ -19,6 +15,11 @@ const postSchema = new Schema(
         ref: "Comment",
       },
     ],
+    isArchived: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
   },
   {
     timestamps: true,

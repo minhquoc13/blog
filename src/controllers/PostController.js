@@ -18,12 +18,16 @@ const updatePost = async (req, res, next) => {
 
     let updatePost = await Post.findById(postId);
 
+    if(!updatePost ) {
+      throw new Error('Post not found')
+    }
+
     if (updatePost.author.toString() !== userId) {
       throw new Error("Not authorized!");
     }
     updatePost = await Post.findByIdAndUpdate(
       postId,
-      { title, desc, content, isUpdatedAt: Date.now() },
+      { title, desc, content },
       { new: true }
     );
     res.json(updatePost);
@@ -38,6 +42,10 @@ const archivePost = async (req, res, next) => {
     const userId = req.user.userId;
 
     let archivePost = await Post.findById(postId);
+
+    if(!archivePost ) {
+      throw new Error('Post not found')
+    }
 
     if (archivePost.author.toString() !== userId) {
       throw new Erorr("Not authorized!");
@@ -63,6 +71,10 @@ const unArchivePost = async (req, res, next) => {
 
     let unArchivePost = await Post.findById(postId);
 
+    if(!unArchivePost ) {
+      throw new Error('Post not found')
+    }
+
     if (unArchivePost.author.toString() !== userId) {
       throw new Erorr("Not authorized!");
     }
@@ -80,12 +92,32 @@ const unArchivePost = async (req, res, next) => {
   }
 };
 
+const increaseViewCount = async (postId) => {
+  try {
+    const post = await Post.findByIdAndUpdate(
+      postId,
+      { $inc: { views: 1 } },
+      { new: true }
+    );
+    if(!post) {
+      throw new Error('Post not found')
+    }
+    return post
+  } catch (error) {
+    throw error;
+  }
+};
+
 const deletePost = async (req, res, next) => {
   try {
     const postId = req.params.id;
     const userId = req.user.userId;
 
     let deletePost = await Post.findById(postId);
+
+    if(!deletePost) {
+      throw new Error('Post not found')
+    }
 
     if (deletePost.author.toString() !== userId) {
       throw new Erorr("Not authorized!");
@@ -100,7 +132,7 @@ const deletePost = async (req, res, next) => {
 
 const getAllPosts = async (req, res, next) => {
   try {
-    const posts = await Post.find();
+    const posts = await Post.find().sort("-createdAt");
     const postCount = await Post.countDocuments();
     res.json({ posts, postCount });
   } catch (error) {
@@ -110,17 +142,21 @@ const getAllPosts = async (req, res, next) => {
 
 const getAllPostsByAuthor = async (req, res, next) => {
   try {
-    const { authorId } = req.params.id;
+    const authorId = req.params.id;
 
-    // Validate that authorId is provided
     if (!authorId) {
       return res.status(400).json({ message: "Author ID is required" });
     }
 
-    // Fetch all posts by the specified author
-    const posts = await Post.find({ author: authorId });
+    const posts = await Post.find({ author: authorId }).sort("-createdAt");
 
-    res.json(posts);
+    if(!posts) {
+      throw new Error('Post not found')
+    }
+
+    const postCount = await Post.countDocuments({ author: authorId });
+
+    res.json({ posts, postCount });
   } catch (error) {
     next(error);
   }
@@ -130,6 +166,12 @@ const getSinglePost = async (req, res, next) => {
   try {
     const postId = req.params.id;
     const post = await Post.findById(postId);
+
+    if(!post) {
+      throw new Error('Post not found')
+    } 
+
+    await increaseViewCount(postId);
     res.json(post);
   } catch (error) {
     next(error);
@@ -140,19 +182,16 @@ const deleteMultiplePosts = async (req, res, next) => {
   try {
     const { postIds } = req.body;
 
-    // Check if postIds array is provided
     if (!postIds || !Array.isArray(postIds) || postIds.length === 0) {
       return res
         .status(400)
         .json({ message: "Invalid or missing postIds array" });
     }
 
-    // Delete multiple posts by IDs
     const deletedPosts = await Post.deleteMany({
       _id: { $in: postIds, isArchive: true },
     });
 
-    // Check if any posts were deleted
     if (deletedPosts.deletedCount === 0) {
       return res
         .status(404)
